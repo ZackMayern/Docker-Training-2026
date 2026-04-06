@@ -1,0 +1,11 @@
+name: Build .NET App
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    uses: ./.github/workflows/main.yml

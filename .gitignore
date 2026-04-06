@@ -1,3 +1,17 @@
 actions-runner
 .github/.DS_Store
 /.DS_Store
+
+# .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+packages/
+*.log
+*.tmp
+*.cache
+*.pdb
+*.exe
+*.dll
