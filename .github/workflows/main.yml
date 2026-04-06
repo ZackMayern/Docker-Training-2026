@@ -12,4 +12,5 @@ jobs:
 
   sonar:
     uses: ./.github/workflows/sonar-analysis.yml
-    secrets: ${{ secrets.SONAR_TOKEN }}
+    secrets:
+      SECRET: ${{ secrets.SONAR_TOKEN }}
