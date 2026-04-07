@@ -36,7 +36,7 @@ jobs:
         uses: hashicorp/setup-terraform@v3
 
       - name: Terraform Init
-        run: terraform init
+        run: terraform init -backend-config="dev.backend.tfvars"
 
       - name: Terraform Plan Destroy
         run: terraform plan -destroy -var-file="dev.tfvars"
