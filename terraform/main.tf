@@ -9,15 +9,15 @@
 # }
 
 # resource "aws_s3_bucket" "anubhav_instance_bucket-2026" {
-#   bucket = "bucket-terraform-2840263405"
+#   bucket = "bucket-terraform-04202601"
 
 #   tags = {
 #     Name = "Anubhav-Instance-Bucket"
 #   }
 # }
 
-resource "aws_ecr_repository" "app_repo_2840263405" {
-  name                 = "app_repo_2840263405"
+resource "aws_ecr_repository" "app_repo_04202601" {
+  name                 = "app_repo_04202601"
   image_tag_mutability = "MUTABLE"
 
   image_scanning_configuration {
@@ -25,7 +25,7 @@ resource "aws_ecr_repository" "app_repo_2840263405" {
   }
 
   tags = {
-    Name = "app_repo_2840263405"
+    Name = "app_repo_04202601"
   }
 }
 
@@ -33,7 +33,7 @@ module "eks" {
   source  = "terraform-aws-modules/eks/aws"
   version = "~> 20.0"
 
-  cluster_name    = "eks-cluster-2840263405"
+  cluster_name    = "eks-cluster-04202601"
   cluster_version = "1.35"
 
   vpc_id     = module.vpc.vpc_id
@@ -47,7 +47,7 @@ module "eks" {
       min_size     = 1
       max_size     = 3
 
-      instance_types = ["t3.medium"]
+      instance_types = ["t2.micro"]
     }
   }
 
@@ -60,12 +60,12 @@ module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
   version = "~> 5.0"
 
-  name = "eks-vpc-2840263405"
+  name = "eks-vpc-04202601"
   cidr = "10.0.0.0/16"
 
-  azs             = ["ap-south-1a", "ap-south-1b", "ap-south-1c"]
-  private_subnets = ["10.0.1.0/24", "10.0.2.0/24", "10.0.3.0/24"]
-  public_subnets  = ["10.0.101.0/24", "10.0.102.0/24", "10.0.103.0/24"]
+  azs             = ["ap-south-1a"]
+  private_subnets = ["10.0.1.0/24"]
+  public_subnets  = ["10.0.101.0/24"]
 
   enable_nat_gateway = true
   single_nat_gateway = true
