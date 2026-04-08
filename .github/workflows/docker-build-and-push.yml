@@ -29,11 +29,11 @@ jobs:
       - name: Build Docker image
         run: |
           docker build \
-            -t ${{ secrets.DOCKER_USERNAME }}/docker-training-2026:${{ inputs.run_number }} \
-            -t ${{ secrets.DOCKER_USERNAME }}/docker-training-2026:latest \
+            -t ${{ secrets.DOCKER_USERNAME }}/dotnetwebapp-2026:${{ inputs.run_number }} \
+            -t ${{ secrets.DOCKER_USERNAME }}/dotnetwebapp-2026:latest \
             .
 
       - name: Push Docker image
         run: |
-          docker push ${{ secrets.DOCKER_USERNAME }}/docker-training-2026:${{ inputs.run_number }}
-          docker push ${{ secrets.DOCKER_USERNAME }}/docker-training-2026:latest
+          docker push ${{ secrets.DOCKER_USERNAME }}/dotnetwebapp-2026:${{ inputs.run_number }}
+          docker push ${{ secrets.DOCKER_USERNAME }}/dotnetwebapp-2026:latest
