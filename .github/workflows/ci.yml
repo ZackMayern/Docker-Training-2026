@@ -10,21 +10,21 @@ jobs:
   # Docker / App flow
   # -------------------
   build:
-    uses: ./.github/workflows/docker_pipelines/build.yml
+    uses: ./.github/workflows/build.yml
 
   sonar:
     needs: build
-    uses: ./.github/workflows/docker_pipelines/sonar.yml
+    uses: ./.github/workflows/sonar.yml
     secrets:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
   docker-build:
     needs: build
-    uses: ./.github/workflows/docker_pipelines/docker-build.yml
+    uses: ./.github/workflows/docker-build.yml
 
   docker-push:
     needs: docker-build
-    uses: ./.github/workflows/docker_pipelines/docker-push.yml
+    uses: ./.github/workflows/docker-push.yml
     secrets:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -34,7 +34,7 @@ jobs:
   # Terraform flow
   # -------------------
   terraform-plan:
-    uses: ./.github/workflows/tf_pipelines/terraform-plan.yml
+    uses: ./.github/workflows/terraform-plan.yml
     secrets:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -42,7 +42,7 @@ jobs:
 
   terraform-apply:
     needs: terraform-plan
-    uses: ./.github/workflows/tf_pipelines/terraform-apply.yml
+    uses: ./.github/workflows/terraform-apply.yml
     secrets:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
