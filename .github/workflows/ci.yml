@@ -10,11 +10,11 @@ jobs:
   # Docker / App flow
   # -------------------
   build:
-    uses: ./.github/workflows/build.yml
+    uses: ./.github/workflows/build-csharp.yml
 
   sonar:
     needs: build
-    uses: ./.github/workflows/sonar.yml
+    uses: ./.github/workflows/sonar-analysis.yml
     secrets:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
