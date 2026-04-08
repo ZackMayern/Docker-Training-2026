@@ -1,7 +1,12 @@
 ﻿var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddControllers();  // <-- registers controller routing
+
 var app = builder.Build();
 
-app.UseDefaultFiles();   // serves index.html automatically at "/"
-app.UseStaticFiles();    // serves files from wwwroot/
+app.UseDefaultFiles();
+app.UseStaticFiles();
+
+app.MapControllers();  // <-- wires up /api/weather
 
 app.Run();

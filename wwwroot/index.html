@@ -1,38 +1,359 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Anubhav's Page</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Weather Page</title>
     <style>
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
         body {
             font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 20px;
             background-color: #f5f5f5;
+            padding: 20px;
         }
+
         .container {
             max-width: 800px;
             margin: 0 auto;
-            background-color: white;
-            padding: 20px;
+        }
+
+        /* ── page header ── */
+        .page-header {
+            background: white;
             border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            margin-bottom: 24px;
         }
-        h1 {
+
+        .page-header h1 {
             color: #333;
+            margin-bottom: 8px;
         }
-        p {
+
+        .page-header p {
             color: #666;
             line-height: 1.6;
         }
+
+        .page-header button {
+            margin-top: 12px;
+            padding: 8px 16px;
+            background: #0078d4;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .page-header button:hover {
+            background: #005fa3;
+        }
+
+        /* ── weather card ── */
+        .weather-card {
+            background: white;
+            border-radius: 8px;
+            padding: 24px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .weather-card h2 {
+            font-size: 18px;
+            color: #333;
+            margin-bottom: 16px;
+        }
+
+        /* search */
+        .search-row {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        .search-row input {
+            flex: 1;
+            padding: 10px 14px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            outline: none;
+        }
+
+        .search-row input:focus {
+            border-color: #0078d4;
+        }
+
+        .search-row button {
+            padding: 10px 20px;
+            background: #0078d4;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .search-row button:hover {
+            background: #005fa3;
+        }
+
+        .error-msg {
+            display: none;
+            color: #c0392b;
+            font-size: 13px;
+            margin-bottom: 12px;
+        }
+
+        /* main weather display */
+        #weather-main {
+            display: none;
+        }
+
+        .main-info {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .city-name {
+            font-size: 22px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .condition {
+            font-size: 14px;
+            color: #888;
+            margin-top: 4px;
+        }
+
+        .temp-big {
+            font-size: 52px;
+            font-weight: 300;
+            color: #333;
+            line-height: 1;
+            margin-top: 8px;
+        }
+
+        .temp-range {
+            font-size: 13px;
+            color: #888;
+            margin-top: 4px;
+        }
+
+        .weather-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .weather-icon svg {
+            width: 36px;
+            height: 36px;
+        }
+
+        /* stats */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .stat-box {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 14px;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 4px;
+        }
+
+        .stat-value {
+            font-size: 20px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        /* forecast */
+        .section-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 10px;
+        }
+
+        .forecast-row {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 8px;
+        }
+
+        .fc-card {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 12px 6px;
+            text-align: center;
+        }
+
+        .fc-day {
+            font-size: 11px;
+            color: #888;
+            margin-bottom: 6px;
+        }
+
+        .fc-icon {
+            width: 24px;
+            height: 24px;
+            margin: 0 auto 6px;
+        }
+
+        .fc-hi {
+            font-size: 14px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .fc-lo {
+            font-size: 12px;
+            color: #888;
+            margin-top: 2px;
+        }
     </style>
 </head>
+
 <body>
     <div class="container">
-        <h1>Welcome to Anubhav's Page</h1>
-        <p>This is a sample HTML file with basic structure and styling.</p>
-        <button onclick="alert('Button clicked!')">Click Me</button>
+
+        <div class="page-header">
+            <h1>Welcome to the Weather Page</h1>
+            <p>Check the weather in your favorite cities!</p>
+        </div>
+
+        <div class="weather-card">
+            <h2>Weather</h2>
+
+            <div class="search-row">
+                <input type="text" id="city-input" placeholder="Search city… e.g. London, Tokyo, Mumbai"
+                    value="New York" />
+                <button onclick="doSearch()">Search</button>
+            </div>
+
+            <p class="error-msg" id="error-msg">
+                City not found. Try: New York, London, Tokyo, Mumbai, Sydney, Paris, Dubai, Bengaluru, New Delhi
+            </p>
+
+            <div id="weather-main">
+                <div class="main-info">
+                    <div>
+                        <div class="city-name" id="city-display"></div>
+                        <div class="condition" id="condition-display"></div>
+                        <div class="temp-big" id="temp-display"></div>
+                        <div class="temp-range" id="range-display"></div>
+                    </div>
+                    <div class="weather-icon" id="icon-box"></div>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-box">
+                        <div class="stat-label">Humidity</div>
+                        <div class="stat-value" id="humidity-val"></div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Wind</div>
+                        <div class="stat-value" id="wind-val"></div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Feels like</div>
+                        <div class="stat-value" id="feels-val"></div>
+                    </div>
+                </div>
+
+                <div class="section-label">5-day forecast</div>
+                <div class="forecast-row" id="forecast-row"></div>
+            </div>
+        </div>
+
     </div>
+
+    <script>
+        const ICONS = {
+            sunny: `<svg viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>`,
+            cloudy: `<svg viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="2" stroke-linecap="round"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9z"/></svg>`,
+            rainy: `<svg viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round"><path d="M20 17.58A5 5 0 0 0 18 8h-1.26A8 8 0 1 0 4 16.25"/><line x1="8" y1="19" x2="8" y2="21"/><line x1="12" y1="18" x2="12" y2="20"/><line x1="16" y1="19" x2="16" y2="21"/></svg>`,
+            snowy: `<svg viewBox="0 0 24 24" fill="none" stroke="#1d4ed8" stroke-width="2" stroke-linecap="round"><line x1="12" y1="2" x2="12" y2="22"/><path d="m17 7-5-5-5 5"/><path d="m17 17-5 5-5-5"/><path d="m2 12 20 0"/><path d="m7 7-5 5 5 5"/><path d="m17 7 5 5-5 5"/></svg>`,
+            stormy: `<svg viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2" stroke-linecap="round"><path d="M19 16.9A5 5 0 0 0 18 7h-1.26a8 8 0 1 0-11.62 9"/><polyline points="13 11 9 17 15 17 11 23"/></svg>`,
+        };
+
+        async function doSearch() {
+            const city = document.getElementById('city-input').value.trim();
+            const err = document.getElementById('error-msg');
+            const main = document.getElementById('weather-main');
+
+            if (!city) return;
+
+            try {
+                const res = await fetch(`/api/weather?city=${encodeURIComponent(city)}`);
+
+                if (!res.ok) {
+                    err.style.display = 'block';
+                    main.style.display = 'none';
+                    return;
+                }
+
+                const data = await res.json();
+
+                err.style.display = 'none';
+                main.style.display = 'block';
+
+                document.getElementById('humidity-val').textContent = data.humidity + '%';
+                document.getElementById('wind-val').textContent = data.wind;
+                document.getElementById('feels-val').textContent = data.feels + '°C';
+                document.getElementById('city-display').textContent = data.city;
+                document.getElementById('condition-display').textContent = data.condition;
+                document.getElementById('temp-display').textContent = data.temp + '°C';
+                document.getElementById('range-display').textContent = 'H:' + data.hi + '°  L:' + data.lo + '°';
+
+                document.getElementById('forecast-row').innerHTML =
+                    data.forecastDays.map(f => `
+                    <div class="fc-card">
+                      <div class="fc-day">${f.day}</div>
+                      <div class="fc-icon">${ICONS[f.icon]}</div>
+                      <div class="fc-hi">${f.hi}°</div>
+                      <div class="fc-lo">${f.lo}°</div>
+                    </div>`).join('');
+
+            } catch {
+                err.textContent = 'Something went wrong. Please try again.';
+                err.style.display = 'block';
+                main.style.display = 'none';
+            }
+        }
+
+        document.getElementById('city-input')
+            .addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(); });
+
+        doSearch();
+    </script>
 </body>
+
 </html>
