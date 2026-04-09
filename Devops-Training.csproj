@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
-    <RootNamespace>Docker_Training_2026</RootNamespace>
+    <RootNamespace>Devops_Training</RootNamespace>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <EnableSourceControlManagerQueries>false</EnableSourceControlManagerQueries>
