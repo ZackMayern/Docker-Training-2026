@@ -208,6 +208,7 @@ jobs:
             --create-namespace \
             --set-string namespace.name="${{ github.event.inputs.namespace }}" \
             --set-string image.repository="${IMAGE_REPOSITORY}" \
+            --set monitoring.serviceMonitor.enabled=false \
             --set-string activeColor="${ACTIVE_COLOR}" \
             --set-string deployments.blue.image.tag="${BLUE_TAG}" \
             --set-string deployments.green.image.tag="${GREEN_TAG}"
@@ -240,6 +241,7 @@ jobs:
             --create-namespace \
             --set-string namespace.name="${{ github.event.inputs.namespace }}" \
             --set-string image.repository="${IMAGE_REPOSITORY}" \
+            --set monitoring.serviceMonitor.enabled=false \
             --set-string activeColor="${INACTIVE_COLOR}" \
             --set-string deployments.blue.image.tag="${BLUE_TAG}" \
             --set-string deployments.green.image.tag="${GREEN_TAG}"

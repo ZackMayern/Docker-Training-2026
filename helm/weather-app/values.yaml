@@ -63,6 +63,6 @@ monitoring:
   interval: 15s
   scrapeTimeout: 10s
   serviceMonitor:
-    enabled: true
+    enabled: false
     namespace: ""
     labels: {}
