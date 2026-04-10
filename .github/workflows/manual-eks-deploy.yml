@@ -134,6 +134,31 @@ jobs:
           set -euo pipefail
           aws eks update-kubeconfig --name "${CLUSTER_NAME}" --region "${{ secrets.AWS_REGION }}"
 
+      - name: Resolve monitoring mode
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          SM_ENABLED=false
+          SM_RELEASE_LABEL=""
+
+          if kubectl get crd servicemonitors.monitoring.coreos.com >/dev/null 2>&1; then
+            SM_ENABLED=true
+            SM_RELEASE_LABEL="$(kubectl get prometheus -A -o jsonpath='{.items[0].spec.serviceMonitorSelector.matchLabels.release}' 2>/dev/null || true)"
+
+            if [ -z "${SM_RELEASE_LABEL}" ]; then
+              SM_RELEASE_LABEL="kube-prometheus-stack"
+            fi
+          fi
+
+          echo "SM_ENABLED=${SM_ENABLED}" >> "$GITHUB_ENV"
+          echo "SM_RELEASE_LABEL=${SM_RELEASE_LABEL}" >> "$GITHUB_ENV"
+
+          echo "ServiceMonitor enabled: ${SM_ENABLED}"
+          if [ "${SM_ENABLED}" = "true" ]; then
+            echo "ServiceMonitor release label: ${SM_RELEASE_LABEL}"
+          fi
+
       - name: Resolve blue-green state
         shell: bash
         run: |
@@ -209,7 +234,8 @@ jobs:
             --set namespace.create=false \
             --set-string namespace.name="${{ github.event.inputs.namespace }}" \
             --set-string image.repository="${IMAGE_REPOSITORY}" \
-            --set monitoring.serviceMonitor.enabled=false \
+            --set monitoring.serviceMonitor.enabled="${SM_ENABLED}" \
+            --set-string monitoring.serviceMonitor.labels.release="${SM_RELEASE_LABEL}" \
             --set-string activeColor="${ACTIVE_COLOR}" \
             --set-string deployments.blue.image.tag="${BLUE_TAG}" \
             --set-string deployments.green.image.tag="${GREEN_TAG}"
@@ -270,7 +296,8 @@ jobs:
             --set namespace.create=false \
             --set-string namespace.name="${{ github.event.inputs.namespace }}" \
             --set-string image.repository="${IMAGE_REPOSITORY}" \
-            --set monitoring.serviceMonitor.enabled=false \
+            --set monitoring.serviceMonitor.enabled="${SM_ENABLED}" \
+            --set-string monitoring.serviceMonitor.labels.release="${SM_RELEASE_LABEL}" \
             --set-string activeColor="${INACTIVE_COLOR}" \
             --set-string deployments.blue.image.tag="${BLUE_TAG}" \
             --set-string deployments.green.image.tag="${GREEN_TAG}"
