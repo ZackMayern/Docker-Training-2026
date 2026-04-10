@@ -206,6 +206,7 @@ jobs:
           helm upgrade --install "${RELEASE_NAME}" "${{ github.event.inputs.chart_path }}" \
             --namespace "${{ github.event.inputs.namespace }}" \
             --create-namespace \
+            --set namespace.create=false \
             --set-string namespace.name="${{ github.event.inputs.namespace }}" \
             --set-string image.repository="${IMAGE_REPOSITORY}" \
             --set monitoring.serviceMonitor.enabled=false \
@@ -239,6 +240,7 @@ jobs:
           helm upgrade --install "${RELEASE_NAME}" "${{ github.event.inputs.chart_path }}" \
             --namespace "${{ github.event.inputs.namespace }}" \
             --create-namespace \
+            --set namespace.create=false \
             --set-string namespace.name="${{ github.event.inputs.namespace }}" \
             --set-string image.repository="${IMAGE_REPOSITORY}" \
             --set monitoring.serviceMonitor.enabled=false \
