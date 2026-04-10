@@ -1,0 +1,68 @@
+namespace:
+  create: true
+  name: weather-app
+
+image:
+  repository: 980637429038.dkr.ecr.ap-south-1.amazonaws.com/weather-app-dotnet
+  pullPolicy: IfNotPresent
+
+activeColor: blue
+
+deployments:
+  blue:
+    replicas: 1
+    image:
+      tag: v1
+  green:
+    replicas: 1
+    image:
+      tag: v1
+
+container:
+  port: 8080
+
+service:
+  stable:
+    name: weather-app-svc
+    type: LoadBalancer
+    port: 80
+    targetPort: 8080
+  color:
+    port: 8080
+    targetPort: 8080
+
+probes:
+  readiness:
+    path: /health
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    timeoutSeconds: 5
+  liveness:
+    path: /health
+    initialDelaySeconds: 20
+    periodSeconds: 20
+    timeoutSeconds: 5
+
+resources:
+  requests:
+    memory: 256Mi
+    cpu: 250m
+  limits:
+    memory: 512Mi
+    cpu: 500m
+
+env:
+  ASPNETCORE_HTTP_PORTS: "8080"
+  ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=weatherdb;Username=postgres;Password=postgres123
+  ConnectionStrings__Redis: redis:6379
+
+monitoring:
+  enabled: true
+  path: /metrics
+  port: http
+  interval: 15s
+  scrapeTimeout: 10s
+  serviceMonitor:
+    enabled: true
+    namespace: ""
+    labels: {}

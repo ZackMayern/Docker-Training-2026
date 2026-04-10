@@ -1,3 +1,5 @@
+using System.Diagnostics;
+using System.Diagnostics.Metrics;
 using Microsoft.AspNetCore.Mvc;
 using Docker_Training_2026.Models;
 
@@ -5,8 +7,14 @@ namespace Docker_Training_2026.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class WeatherController : ControllerBase
+public class WeatherController(ILogger<WeatherController> logger) : ControllerBase
 {
+    private static readonly Meter Meter = new("Weather.App");
+    private static readonly Counter<long> LookupRequests = Meter.CreateCounter<long>("weather_lookup_requests");
+    private static readonly Counter<long> LookupBadRequests = Meter.CreateCounter<long>("weather_lookup_bad_requests");
+    private static readonly Counter<long> LookupNotFound = Meter.CreateCounter<long>("weather_lookup_not_found");
+    private static readonly Histogram<double> LookupDurationMs = Meter.CreateHistogram<double>("weather_lookup_duration_ms");
+
     private static readonly Dictionary<string, WeatherData> MockWeatherData = new(StringComparer.OrdinalIgnoreCase)
     {
         ["mumbai"] = new WeatherData(
@@ -184,13 +192,38 @@ public class WeatherController : ControllerBase
     [HttpGet]
     public IActionResult Get([FromQuery] string city)
     {
+        var stopwatch = Stopwatch.StartNew();
+
         if (string.IsNullOrWhiteSpace(city))
+        {
+            LookupBadRequests.Add(1, new KeyValuePair<string, object?>("endpoint", "weather"));
+            LookupDurationMs.Record(stopwatch.Elapsed.TotalMilliseconds, new KeyValuePair<string, object?>("outcome", "bad_request"));
+            logger.LogWarning("Weather lookup rejected because city query parameter was missing.");
             return BadRequest(new { error = "City parameter is required." });
+        }
 
         var key = city.Trim().ToLowerInvariant();
+        LookupRequests.Add(1,
+            new KeyValuePair<string, object?>("endpoint", "weather"),
+            new KeyValuePair<string, object?>("city", key));
+
         var data = MockWeatherData.GetValueOrDefault(key);
         if (data is null)
+        {
+            LookupNotFound.Add(1,
+                new KeyValuePair<string, object?>("endpoint", "weather"),
+                new KeyValuePair<string, object?>("city", key));
+            LookupDurationMs.Record(stopwatch.Elapsed.TotalMilliseconds,
+                new KeyValuePair<string, object?>("outcome", "not_found"),
+                new KeyValuePair<string, object?>("city", key));
+            logger.LogInformation("Weather lookup returned no data for city {City}.", key);
             return NotFound(new { error = $"City '{city}' not found." });
+        }
+
+        LookupDurationMs.Record(stopwatch.Elapsed.TotalMilliseconds,
+            new KeyValuePair<string, object?>("outcome", "success"),
+            new KeyValuePair<string, object?>("city", key));
+        logger.LogInformation("Weather lookup served for city {City}.", key);
 
         return Ok(data);
     }

@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       image_tag:
-        description: "Image tag to deploy (default: run number)"
+        description: "Image tag to deploy (default: v<run number>)"
         required: false
         type: string
       namespace:
@@ -12,19 +12,20 @@ on:
         required: false
         default: "weather-app"
         type: string
-      manifest_path:
-        description: "Path to Kubernetes manifest"
+      chart_path:
+        description: "Path to Helm chart"
         required: false
-        default: "manifests.yml"
+        default: "helm/weather-app"
         type: string
 
 env:
   CLUSTER_NAME: demo-eks-cluster1
   ECR_REPOSITORY: weather-app-dotnet
+  RELEASE_NAME: weather-app
 
 jobs:
   deploy:
-    name: Build, Test, Push, Deploy
+    name: Build, Push, Blue-Green Deploy
     runs-on: ubuntu-latest
 
     steps:
@@ -38,6 +39,11 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.15.4
+
       - name: Set runtime variables
         shell: bash
         run: |
@@ -45,19 +51,25 @@ jobs:
 
           TAG_INPUT="${{ github.event.inputs.image_tag }}"
           if [ -z "${TAG_INPUT}" ]; then
-            IMAGE_TAG="${GITHUB_RUN_NUMBER}"
+            IMAGE_TAG="v${GITHUB_RUN_NUMBER}"
           else
             IMAGE_TAG="${TAG_INPUT}"
+          fi
+
+          if [[ "${IMAGE_TAG}" != v* ]]; then
+            IMAGE_TAG="v${IMAGE_TAG}"
           fi
 
           ACCOUNT_ID="$(aws sts get-caller-identity --query Account --output text)"
           REGION="${{ secrets.AWS_REGION }}"
           ECR_REGISTRY="${ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com"
-          IMAGE_URI="${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
+          IMAGE_REPOSITORY="${ECR_REGISTRY}/${ECR_REPOSITORY}"
+          IMAGE_URI="${IMAGE_REPOSITORY}:${IMAGE_TAG}"
 
           echo "IMAGE_TAG=${IMAGE_TAG}" >> "$GITHUB_ENV"
           echo "ACCOUNT_ID=${ACCOUNT_ID}" >> "$GITHUB_ENV"
           echo "ECR_REGISTRY=${ECR_REGISTRY}" >> "$GITHUB_ENV"
+          echo "IMAGE_REPOSITORY=${IMAGE_REPOSITORY}" >> "$GITHUB_ENV"
           echo "IMAGE_URI=${IMAGE_URI}" >> "$GITHUB_ENV"
 
           echo "Resolved image URI: ${IMAGE_URI}"
@@ -76,7 +88,9 @@ jobs:
           docker run -d --rm --name weather-app-test -p 8080:8080 weather-app-local:${IMAGE_TAG}
 
           for i in {1..20}; do
-            if curl -fsS "http://localhost:8080/api/weather?city=Mumbai" >/tmp/response.json; then
+            if curl -fsS "http://localhost:8080/health" >/dev/null && \
+               curl -fsS "http://localhost:8080/api/weather?city=Mumbai" >/tmp/response.json && \
+               curl -fsS "http://localhost:8080/metrics" | grep -q "weather_lookup_requests"; then
               break
             fi
             sleep 3
@@ -120,40 +134,147 @@ jobs:
           set -euo pipefail
           aws eks update-kubeconfig --name "${CLUSTER_NAME}" --region "${{ secrets.AWS_REGION }}"
 
-      - name: Deploy manifests
+      - name: Resolve blue-green state
         shell: bash
         run: |
           set -euo pipefail
-          kubectl apply -f "${{ github.event.inputs.manifest_path }}"
+          NAMESPACE="${{ github.event.inputs.namespace }}"
 
-      - name: Update deployment image
-        shell: bash
-        run: |
-          set -euo pipefail
-          kubectl set image deployment/weather-app \
-            weather-app="${IMAGE_URI}" \
-            -n "${{ github.event.inputs.namespace }}"
+          if kubectl get service weather-app-svc -n "${NAMESPACE}" >/dev/null 2>&1; then
+            INITIAL_DEPLOYMENT=false
+            ACTIVE_COLOR="$(kubectl get service weather-app-svc -n "${NAMESPACE}" -o jsonpath='{.spec.selector.color}')"
+          else
+            INITIAL_DEPLOYMENT=true
+            ACTIVE_COLOR="blue"
+          fi
 
-      - name: Wait for rollout
+          if [ "${ACTIVE_COLOR}" = "blue" ]; then
+            INACTIVE_COLOR="green"
+          else
+            INACTIVE_COLOR="blue"
+          fi
+
+          BLUE_TAG="${IMAGE_TAG}"
+          GREEN_TAG="${IMAGE_TAG}"
+
+          if kubectl get deployment weather-app-blue -n "${NAMESPACE}" >/dev/null 2>&1; then
+            BLUE_TAG="$(kubectl get deployment weather-app-blue -n "${NAMESPACE}" -o jsonpath='{.spec.template.spec.containers[0].image}' | awk -F: '{print $NF}')"
+          fi
+
+          if kubectl get deployment weather-app-green -n "${NAMESPACE}" >/dev/null 2>&1; then
+            GREEN_TAG="$(kubectl get deployment weather-app-green -n "${NAMESPACE}" -o jsonpath='{.spec.template.spec.containers[0].image}' | awk -F: '{print $NF}')"
+          fi
+
+          if [ "${INITIAL_DEPLOYMENT}" = false ]; then
+            if [ "${INACTIVE_COLOR}" = "blue" ]; then
+              BLUE_TAG="${IMAGE_TAG}"
+            else
+              GREEN_TAG="${IMAGE_TAG}"
+            fi
+          fi
+
+          SMOKE_COLOR="${INACTIVE_COLOR}"
+          FINAL_ACTIVE_COLOR="${INACTIVE_COLOR}"
+          if [ "${INITIAL_DEPLOYMENT}" = true ]; then
+            SMOKE_COLOR="blue"
+            FINAL_ACTIVE_COLOR="blue"
+          fi
+
+          echo "INITIAL_DEPLOYMENT=${INITIAL_DEPLOYMENT}" >> "$GITHUB_ENV"
+          echo "ACTIVE_COLOR=${ACTIVE_COLOR}" >> "$GITHUB_ENV"
+          echo "INACTIVE_COLOR=${INACTIVE_COLOR}" >> "$GITHUB_ENV"
+          echo "FINAL_ACTIVE_COLOR=${FINAL_ACTIVE_COLOR}" >> "$GITHUB_ENV"
+          echo "BLUE_TAG=${BLUE_TAG}" >> "$GITHUB_ENV"
+          echo "GREEN_TAG=${GREEN_TAG}" >> "$GITHUB_ENV"
+          echo "SMOKE_COLOR=${SMOKE_COLOR}" >> "$GITHUB_ENV"
+
+          echo "Active color: ${ACTIVE_COLOR}"
+          echo "Inactive color: ${INACTIVE_COLOR}"
+          echo "Blue tag: ${BLUE_TAG}"
+          echo "Green tag: ${GREEN_TAG}"
+
+      - name: Lint Helm chart
         shell: bash
         run: |
           set -euo pipefail
-          kubectl rollout status deployment/weather-app -n "${{ github.event.inputs.namespace }}" --timeout=180s
+          helm lint "${{ github.event.inputs.chart_path }}"
+
+      - name: Deploy target color with Helm
+        shell: bash
+        run: |
+          set -euo pipefail
+          helm upgrade --install "${RELEASE_NAME}" "${{ github.event.inputs.chart_path }}" \
+            --namespace "${{ github.event.inputs.namespace }}" \
+            --create-namespace \
+            --set-string namespace.name="${{ github.event.inputs.namespace }}" \
+            --set-string image.repository="${IMAGE_REPOSITORY}" \
+            --set-string activeColor="${ACTIVE_COLOR}" \
+            --set-string deployments.blue.image.tag="${BLUE_TAG}" \
+            --set-string deployments.green.image.tag="${GREEN_TAG}"
+
+      - name: Wait for target rollout
+        shell: bash
+        run: |
+          set -euo pipefail
+          kubectl rollout status deployment/weather-app-${SMOKE_COLOR} -n "${{ github.event.inputs.namespace }}" --timeout=180s
+
+      - name: Smoke test target color
+        shell: bash
+        run: |
+          set -euo pipefail
+          kubectl run smoke-check-${GITHUB_RUN_NUMBER} \
+            --rm \
+            --attach=true \
+            --restart=Never \
+            --namespace "${{ github.event.inputs.namespace }}" \
+            --image=curlimages/curl:8.7.1 \
+            --command -- sh -c "curl -fsS http://weather-app-${SMOKE_COLOR}:8080/health >/dev/null && curl -fsS 'http://weather-app-${SMOKE_COLOR}:8080/api/weather?city=Mumbai' >/dev/null && curl -fsS http://weather-app-${SMOKE_COLOR}:8080/metrics | grep -q weather_lookup_requests"
+
+      - name: Cut over stable service
+        if: env.INITIAL_DEPLOYMENT == 'false'
+        shell: bash
+        run: |
+          set -euo pipefail
+          helm upgrade --install "${RELEASE_NAME}" "${{ github.event.inputs.chart_path }}" \
+            --namespace "${{ github.event.inputs.namespace }}" \
+            --create-namespace \
+            --set-string namespace.name="${{ github.event.inputs.namespace }}" \
+            --set-string image.repository="${IMAGE_REPOSITORY}" \
+            --set-string activeColor="${INACTIVE_COLOR}" \
+            --set-string deployments.blue.image.tag="${BLUE_TAG}" \
+            --set-string deployments.green.image.tag="${GREEN_TAG}"
+
+      - name: Verify stable service
+        shell: bash
+        run: |
+          set -euo pipefail
+          kubectl run stable-check-${GITHUB_RUN_NUMBER} \
+            --rm \
+            --attach=true \
+            --restart=Never \
+            --namespace "${{ github.event.inputs.namespace }}" \
+            --image=curlimages/curl:8.7.1 \
+            --command -- sh -c "curl -fsS http://weather-app-svc/health >/dev/null && curl -fsS 'http://weather-app-svc/api/weather?city=Mumbai' >/dev/null"
 
       - name: Show deployment status
         shell: bash
         run: |
           set -euo pipefail
           kubectl get pods -n "${{ github.event.inputs.namespace }}"
+          kubectl get deployments -n "${{ github.event.inputs.namespace }}"
           kubectl get svc weather-app-svc -n "${{ github.event.inputs.namespace }}"
 
       - name: Job summary
         shell: bash
         run: |
           {
-            echo "## Manual EKS Deployment"
+            echo "## Manual EKS Blue-Green Deployment"
             echo "- Cluster: ${CLUSTER_NAME}"
             echo "- Namespace: ${{ github.event.inputs.namespace }}"
-            echo "- Manifest: ${{ github.event.inputs.manifest_path }}"
+            echo "- Chart: ${{ github.event.inputs.chart_path }}"
             echo "- Image: ${IMAGE_URI}"
+            echo "- Active color before deploy: ${ACTIVE_COLOR}"
+            echo "- Active color after deploy: ${FINAL_ACTIVE_COLOR}"
+            echo "- Blue image tag: ${BLUE_TAG}"
+            echo "- Green image tag: ${GREEN_TAG}"
           } >> "$GITHUB_STEP_SUMMARY"

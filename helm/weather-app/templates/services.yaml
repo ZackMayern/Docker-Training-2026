@@ -1,0 +1,62 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.service.stable.name }}
+  namespace: {{ include "weather-app.namespace" . }}
+  labels:
+    {{- include "weather-app.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.stable.type }}
+  selector:
+    {{- include "weather-app.selectorLabels" . | nindent 4 }}
+    color: {{ .Values.activeColor }}
+  ports:
+    - name: http
+      port: {{ .Values.service.stable.port }}
+      targetPort: {{ .Values.service.stable.targetPort }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: weather-app-blue
+  namespace: {{ include "weather-app.namespace" . }}
+  labels:
+    {{- include "weather-app.labels" . | nindent 4 }}
+    color: blue
+    monitoring.weather-app/scrape: "true"
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/path: {{ .Values.monitoring.path | quote }}
+    prometheus.io/port: {{ .Values.service.color.port | quote }}
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "weather-app.selectorLabels" . | nindent 4 }}
+    color: blue
+  ports:
+    - name: http
+      port: {{ .Values.service.color.port }}
+      targetPort: {{ .Values.service.color.targetPort }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: weather-app-green
+  namespace: {{ include "weather-app.namespace" . }}
+  labels:
+    {{- include "weather-app.labels" . | nindent 4 }}
+    color: green
+    monitoring.weather-app/scrape: "true"
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/path: {{ .Values.monitoring.path | quote }}
+    prometheus.io/port: {{ .Values.service.color.port | quote }}
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "weather-app.selectorLabels" . | nindent 4 }}
+    color: green
+  ports:
+    - name: http
+      port: {{ .Values.service.color.port }}
+      targetPort: {{ .Values.service.color.targetPort }}

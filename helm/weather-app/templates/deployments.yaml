@@ -1,0 +1,97 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: weather-app-blue
+  namespace: {{ include "weather-app.namespace" . }}
+  labels:
+    {{- include "weather-app.labels" . | nindent 4 }}
+    color: blue
+spec:
+  replicas: {{ .Values.deployments.blue.replicas }}
+  selector:
+    matchLabels:
+      {{- include "weather-app.selectorLabels" . | nindent 6 }}
+      color: blue
+  template:
+    metadata:
+      labels:
+        {{- include "weather-app.selectorLabels" . | nindent 8 }}
+        color: blue
+    spec:
+      containers:
+        - name: weather-app
+          image: {{ printf "%s:%s" .Values.image.repository .Values.deployments.blue.image.tag | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.container.port }}
+          env:
+            {{- range $name, $value := .Values.env }}
+            - name: {{ $name }}
+              value: {{ $value | quote }}
+            {{- end }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.probes.readiness.path }}
+              port: http
+            initialDelaySeconds: {{ .Values.probes.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.readiness.periodSeconds }}
+            timeoutSeconds: {{ .Values.probes.readiness.timeoutSeconds }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.probes.liveness.path }}
+              port: http
+            initialDelaySeconds: {{ .Values.probes.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.liveness.periodSeconds }}
+            timeoutSeconds: {{ .Values.probes.liveness.timeoutSeconds }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: weather-app-green
+  namespace: {{ include "weather-app.namespace" . }}
+  labels:
+    {{- include "weather-app.labels" . | nindent 4 }}
+    color: green
+spec:
+  replicas: {{ .Values.deployments.green.replicas }}
+  selector:
+    matchLabels:
+      {{- include "weather-app.selectorLabels" . | nindent 6 }}
+      color: green
+  template:
+    metadata:
+      labels:
+        {{- include "weather-app.selectorLabels" . | nindent 8 }}
+        color: green
+    spec:
+      containers:
+        - name: weather-app
+          image: {{ printf "%s:%s" .Values.image.repository .Values.deployments.green.image.tag | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.container.port }}
+          env:
+            {{- range $name, $value := .Values.env }}
+            - name: {{ $name }}
+              value: {{ $value | quote }}
+            {{- end }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.probes.readiness.path }}
+              port: http
+            initialDelaySeconds: {{ .Values.probes.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.readiness.periodSeconds }}
+            timeoutSeconds: {{ .Values.probes.readiness.timeoutSeconds }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.probes.liveness.path }}
+              port: http
+            initialDelaySeconds: {{ .Values.probes.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.liveness.periodSeconds }}
+            timeoutSeconds: {{ .Values.probes.liveness.timeoutSeconds }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}

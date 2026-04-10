@@ -1,10 +1,27 @@
-﻿var builder = WebApplication.CreateBuilder(args);
+﻿using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+
+var builder = WebApplication.CreateBuilder(args);
+var serviceVersion = typeof(Program).Assembly.GetName().Version?.ToString() ?? "1.0.0";
 
 builder.Services.AddControllers();
+builder.Services.AddHealthChecks();
 // Mock-only mode: DB/Redis integrations are disabled.
 // builder.Services.AddDbContext<WeatherDbContext>(options => options.UseNpgsql(databaseConnection));
 // builder.Services.AddStackExchangeRedisCache(options => options.Configuration = redisConnection);
 // builder.Services.AddScoped<WeatherService>();
+builder.Services
+	.AddOpenTelemetry()
+	.WithMetrics(metrics =>
+	{
+		metrics
+			.SetResourceBuilder(ResourceBuilder.CreateDefault()
+				.AddService("weather-app", serviceVersion: serviceVersion))
+			.AddAspNetCoreInstrumentation()
+			.AddRuntimeInstrumentation()
+			.AddMeter("Weather.App")
+			.AddPrometheusExporter();
+	});
 
 var app = builder.Build();
 
@@ -19,6 +36,8 @@ var app = builder.Build();
 app.UseDefaultFiles();
 app.UseStaticFiles();
 
-app.MapControllers();  // <-- wires up /api/weather
+app.MapHealthChecks("/health");
+app.MapPrometheusScrapingEndpoint("/metrics");
+app.MapControllers();
 
 app.Run();
